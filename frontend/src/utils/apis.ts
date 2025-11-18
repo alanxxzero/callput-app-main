@@ -1,0 +1,5 @@
+export const SETTLE_PRICE_DATA_API = "https://moby-arb-data.s3.ap-northeast-2.amazonaws.com/settle-prices.json"
+export const IS_RESTRICTED_COUNTRY_API = "https://5kjx4q22r2.execute-api.ap-northeast-2.amazonaws.com/prod/isRestrictedCountry"
+export const KLINE_API = "https://5kjx4q22r2.execute-api.ap-northeast-2.amazonaws.com/prod/getKlines"
+export const WEBSOCKET_API = "wss://emcy79iz6k.execute-api.ap-northeast-2.amazonaws.com/prod/"
+export const MARKET_DAILY_API = "https://moby-arb-data.s3.ap-northeast-2.amazonaws.com/market-daily/market-daily"

@@ -1,0 +1,19 @@
+{
+  "name": "moby",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "backend/*",
+    "frontend"
+  ],
+  "packageManager": "npm@10.3.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  }
+}

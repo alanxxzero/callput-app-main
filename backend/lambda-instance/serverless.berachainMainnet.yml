@@ -1,0 +1,367 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: moby-lam-beram
+# app and org for use with dashboard.serverless.com
+#app: your-app-name
+#org: your-org-name
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  role: arn:aws:iam::343475135657:role/lambda-with-critical-policy
+  runtime: nodejs18.x
+  memorySize: 1024
+  timeout: 60
+  environment:
+    SECRET_PATH: ${self:custom.secretPath.${opt:stage, 'dev'}}
+
+    # NODE_OPTIONS: --enable-source-maps
+    CHAIN_ID: ${self:custom.env.CHAIN_ID}
+
+    # REGION
+    MOBY_DATA_REGION: "ap-northeast-2"
+    
+    # COMMON DATA
+    MOBY_GLOBAL_DATA_BUCKET: "moby-arb-data"
+    
+    MOBY_GLOBAL_DATA_FUTURES_KEY: futures.json
+    MOBY_GLOBAL_DATA_FUTURES_DAILY_KEY: futures-daily/futures-daily
+    MOBY_GLOBAL_DATA_SPOT_KEY: spot.json
+    MOBY_GLOBAL_DATA_SPOT_DAILY_KEY: spot-daily/spot-daily
+    MOBY_GLOBAL_DATA_SETTLE_PRICE_KEY: settle-prices.json
+    MOBY_GLOBAL_DATA_RISK_FREE_RATES_KEY: risk-free-rates.json
+    MOBY_GLOBAL_GEO_LITE_COUNTRY_DATA_KEY: GeoLite2-Country.mmdb
+    MOBY_GLOBAL_DATA_BINANCE_KLINE_KEY: klines-data/binance
+
+    # BERACHAIN SPECIFIC
+    MOBY_DATA_BUCKET: "moby-data-berachain-mainnet"
+    
+    MOBY_DATA_MARKET_DATA_KEY: market-data.json
+    MOBY_DATA_INSTRUMENTS_KEY: instruments.json
+    MOBY_DATA_INSTRUMENTS_HASH_KEY: instruments-hash.json
+    MOBY_DATA_SETTLE_CHECK_KEY: settle-check.json
+    MOBY_DATA_TRADE_DATA_KEY: trade-data.json
+    MOBY_DATA_OLPPV_KEY: olppv.json
+
+    MOBY_DATA_MARKET_DAILY_KEY: market-daily/market-daily
+    MOBY_DATA_IV_CURVE_DAILY_KEY: iv-curve-daily/iv-curve-daily
+    MOBY_DATA_OLP_STATS_DAILY_KEY: olp-stats-daily/olp-stats-daily
+
+    MOBY_CLOUDFRONT_DISTRIBUTION_ID: E1V5VQTHWEUODP
+
+    # IV CURVE BATCH URL
+    IV_CURVE_BATCH_URL: ${self:custom.env.IV_CURVE_BATCH_URL}
+
+    # iv curve weight
+    DERIBIT_IV_CURVE_WEIGHT: 0.6
+    OKX_IV_CURVE_WEIGHT: 0.2
+    BYBIT_IV_CURVE_WEIGHT: 0.2
+
+    # max
+    MAX_RUNNING_TIME_FOR_PARALLEL_TASK: 59 # 59s
+    MAX_RETRIES: 3
+
+    
+
+# you can overwrite defaults here
+  stage: prod
+  region: ap-northeast-2
+
+# you can add statements to the Lambda function's IAM Role here
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action:
+            - "s3:GetObject"
+            - "s3:PutObject"
+          Resource:
+            Fn::Join:
+              - ""
+              - - "arn:aws:s3:::"
+                - "moby-arb-data"
+                - "/*"
+        - Effect: "Allow"
+          Action:
+            - "s3:GetObject"
+            - "s3:PutObject"
+          Resource:
+            Fn::Join:
+              - ""
+              - - "arn:aws:s3:::"
+                - "moby-data-bera-dev"
+                - "/*"
+
+# you can define service wide environment variables here
+#  environment:
+#    variable1: value1
+
+custom:
+  env: ${file(./environments/berachainMainnet/env.json)}
+  secretPath:
+    dev: /dev-common/beramainnet/
+    prod: /critical/beramainnet/
+  esbuild:
+    bundle: true
+    minify: false
+    format: cjs
+    target: node18
+    external:
+      - '@aws-sdk/*'
+    # sourcemap: external
+  # webpack:
+  #   webpackConfig: 'webpack.config.js' # Name of webpack configuration file
+  #   includeModules: false # Node modules configuration for packaging
+  #   packager: 'npm' # Packager that will be used to package your external modules
+
+# you can add packaging information here
+# package:
+#  patterns:
+#    - dist/**
+#    - node_modules/**
+
+functions:
+  # Process Parallel
+  processExecutePositionRequestParallel:
+    handler: handler-berachainMainnet.processExecutePositionRequestParallel
+    memorySize: 2048
+    reservedConcurrency: 1
+    events:
+      - schedule:
+          name: execute-position-request-parallel-beram
+          description: ''
+          rate: rate(1 minute)
+  processCollectMarketDataParallel:
+    handler: handler-berachainMainnet.processCollectMarketDataParallel
+    memorySize: 2048
+    reservedConcurrency: 1
+    events:
+      - schedule:
+          name: collect-market-data-parallel-beram
+          description: ''
+          rate: rate(1 minute)
+  processCollectTradeDataParallel:
+    handler: handler-berachainMainnet.processCollectTradeDataParallel
+    memorySize: 2048
+    reservedConcurrency: 1
+    events:
+      - schedule:
+          name: collect-trade-data-parallel-beram
+          description: ''
+          rate: rate(1 minute)
+  processUpdateOlppvParallel:
+    handler: handler-berachainMainnet.processUpdateOlppvParallel
+    reservedConcurrency: 1
+    events:
+      - schedule:
+          name: process-update-olppv-parallel-beram
+          description: ''
+          rate: rate(1 minute)
+  processFeedOnchainDataParallel:
+    handler: handler-berachainMainnet.processFeedOnchainDataParallel
+    reservedConcurrency: 1
+    events:
+      - schedule:
+          name: process-feed-onchain-data-parallel-beram
+          description: ''
+          rate: rate(1 minute)
+  # Process Single
+  processUpdateDaily:
+    handler: handler-berachainMainnet.processUpdateDaily
+    memorySize: 2048
+    events:
+      - schedule:
+          name: process-update-daily-beram
+          description: ''
+          rate: cron(0-5 0 * * ? *)
+  processNotifyTradeData:
+    handler: handler-berachainMainnet.processNotifyTradeData
+    events:
+      - schedule:
+          name: notify-trade-data-beram
+          description: ''
+          rate: cron(0 8 * * ? *)
+  processNotifyPositions:
+    handler: handler-berachainMainnet.processNotifyPositions
+    events:
+      - schedule:
+          name: process-notify-positions-beram
+          description: ''
+          rate: rate(1 minute)
+  processCheckAvailableAmounts:
+    handler: handler-berachainMainnet.processCheckAvailableAmounts
+    events:
+      - schedule:
+          name: check-available-amounts-beram
+          description: ''
+          rate: cron(0 0/4 * * ? *)
+  processCheckMarketChange:
+    handler: handler-berachainMainnet.processCheckMarketChange
+    events:
+      - schedule:
+          name: process-check-market-change-beram
+          description: ''
+          rate: rate(5 minutes)
+  processCheckKeeperBalances:
+    handler: handler-berachainMainnet.processCheckKeeperBalances
+    events:
+      - schedule:
+          name: check-keeper-balances-beram
+          description: ''
+          rate: rate(30 minutes)
+  processCheckFeedUpdates:
+    handler: handler-berachainMainnet.processCheckFeedUpdates
+    events:
+      - schedule:
+          name: check-feed-updates-beram
+          description: ''
+          rate: rate(1 minute)
+  processCheckFileUpdates:
+    handler: handler-berachainMainnet.processCheckFileUpdates
+    events:
+      - schedule:
+          name: check-file-updates-beram
+          description: ''
+          rate: rate(1 minute)
+  processCollectOlpStats:
+    handler: handler-berachainMainnet.processCollectOlpStats
+    memorySize: 2048
+    events:
+      - schedule:
+          name: collect-olp-stats-beram
+          description: ''
+          rate: rate(1 minute)
+  processCollectMarketDaily:
+    handler: handler-berachainMainnet.processCollectMarketDaily
+    memorySize: 2048
+    events:
+      - schedule:
+          name: process-collect-market-daily-beram
+          description: ''
+          rate: cron(0 0 * * ? *)
+  processDetectPriceVolatility:
+    handler: handler-berachainMainnet.processDetectPriceVolatility
+    events:
+      - schedule:
+          name: detect-price-volatility-beram
+          description: ''
+          rate: rate(1 minute)
+  processFeedInstruments:
+    handler: handler-berachainMainnet.processFeedInstruments
+    events:
+      - schedule:
+          name: feed-instruments-1-beram
+          description: ''
+          rate: cron(5,20,35,50 8-23 * * ? *)
+      - schedule:
+          name: feed-instruments-2-beram
+          description: ''
+          rate: cron(5,20,35,50 0-7 * * ? *)
+  processUpdateOptionsMarket:
+    handler: handler-berachainMainnet.processUpdateOptionsMarket
+    events:
+      - schedule:
+          name: update-options-market-beram
+          description: ''
+          rate: rate(1 hour)
+  processDistributeFee:
+    handler: handler-berachainMainnet.processDistributeFee
+    events:
+      - schedule:
+          name: distribute-fee-beram
+          description: ''
+          rate: cron(0 0 * * ? *)
+  processDistributeReward:
+    handler: handler-berachainMainnet.processDistributeReward
+    events:
+      - schedule:
+          name: distribute-reward-beram
+          description: ''
+          rate: rate(1 minute)
+  processClearPositions:
+    handler: handler-berachainMainnet.processClearPositions
+    events:
+      - schedule:
+          name: clear-positions-beram
+          description: ''
+          rate: rate(10 minutes)
+  processFeedSettlePrice:
+    handler: handler-berachainMainnet.processFeedSettlePrice
+    events:
+      - schedule:
+          name: feed-settle-price-beram-new
+          description: ''
+          rate: cron(2-7 8 * * ? *)
+  processExecuteVaultSettlement:
+    handler: handler-berachainMainnet.processExecuteVaultSettlement
+    events:
+      - schedule:
+          name: execute-vault-settlement-beram-new
+          description: ''
+          rate: cron(5-30 8 * * ? *)
+  applyOLPDepositPoints:
+    handler: handler-berachainMainnet.applyOLPDepositPoints
+    events:
+      - schedule:
+          name: daily-olp-deposit-point-beram
+          description: ''
+          rate: cron(0 0 * * ? *)
+  applyWeeklyRewardPoints:
+    handler: handler-berachainMainnet.applyWeeklyRewardPoints
+    events:
+      - schedule:
+          name: weekly-reward-points-beram
+          description: ''
+          rate: cron(0 0 ? * MON *)
+  query:
+    handler: handler-berachainMainnet.query
+  getVolumeData:
+    handler: handler-berachainMainnet.getVolumeData
+    events:
+      - http:
+          path: /getVolumeData
+          method: get
+          cors: true
+  getRevenue:
+    handler: handler-berachainMainnet.getRevenue
+    events:
+      - http:
+          path: /getRevenue
+          method: get
+          cors: true
+  getProtocolNetRevenue:
+    handler: handler-berachainMainnet.getProtocolNetRevenue
+    events:
+      - http:
+          path: /getProtocolNetRevenue
+          method: get
+          cors: true
+  updateOlpPoolDashboardData:
+    handler: handler-berachainMainnet.updateOlpPoolDashboardData
+    events:
+      - schedule: 
+          name: update-olp-pool-dashboard-data-bera
+          description: ''
+          rate: rate(6 hours)
+  demo:
+    handler: handler-berachainMainnet.demo
+
+plugins:
+  - serverless-functions-base-path
+  # - serverless-webpack
+  - serverless-esbuild
+  - serverless-offline
